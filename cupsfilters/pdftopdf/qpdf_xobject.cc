@@ -11,29 +11,16 @@
 
 // NOTE: use /TrimBox to position content inside Nup cell, /BleedBox to clip against
 
-class CombineFromContents_Provider : public QPDFObjectHandle::StreamDataProvider {
+class CombinedContents_Provider : public QPDFObjectHandle::StreamDataProvider {
 public:
-  CombineFromContents_Provider(const std::vector<QPDFObjectHandle> &contents);
+  CombinedContents_Provider(const QPDFObjectHandle &page) : page(page) {}
 
-  void provideStreamData(int objid, int generation, Pipeline* pipeline);
-private:
-  std::vector<QPDFObjectHandle> contents;
-};
-
-CombineFromContents_Provider::CombineFromContents_Provider(const std::vector<QPDFObjectHandle> &contents)
-  : contents(contents)
-{
-}
-
-void CombineFromContents_Provider::provideStreamData(int objid, int generation, Pipeline* pipeline)
-{
-  Pl_Concatenate concat("concat", pipeline);
-  const int clen=contents.size();
-  for (int iA=0;iA<clen;iA++) {
-    contents[iA].pipeStreamData(&concat, true, false, false);
+  void provideStreamData(int objid, int generation, Pipeline* pipeline) {
+    page.pipePageContents(pipeline);
   }
-  concat.manualFinish();
-}
+private:
+  QPDFObjectHandle page;
+};
 
 /*
   To convert a page to an XObject there are several keys to consider:
@@ -134,9 +121,7 @@ QPDFObjectHandle makeXObject(QPDF *pdf,QPDFObjectHandle page)
   QPDFObjectHandle filter=QPDFObjectHandle::newNull();
   QPDFObjectHandle decode_parms=QPDFObjectHandle::newNull();
 
-  std::vector<QPDFObjectHandle> contents=page.getPageContents();  // (will assertPageObject)
-
-  auto ph=PointerHolder<QPDFObjectHandle::StreamDataProvider>(new CombineFromContents_Provider(contents));
+  auto ph=PointerHolder<QPDFObjectHandle::StreamDataProvider>(new CombinedContents_Provider(page));
   ret.replaceStreamData(ph,filter,decode_parms);
 
   return ret;
