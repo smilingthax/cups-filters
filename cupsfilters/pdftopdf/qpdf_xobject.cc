@@ -16,7 +16,9 @@ public:
   CombinedContents_Provider(const QPDFObjectHandle &page) : page(page) {}
 
   void provideStreamData(int objid, int generation, Pipeline* pipeline) {
-    page.pipePageContents(pipeline);
+    Pl_Concatenate concat("concat", pipeline);
+    page.pipePageContents(&concat);
+    concat.manualFinish();
   }
 private:
   QPDFObjectHandle page;
